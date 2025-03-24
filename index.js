@@ -16,6 +16,7 @@ async function scrapeHotelPrices({
   cityCode,
   checkin,
   checkout,
+  starRating, // New parameter for filtering by star rating
   targetHotelCount = 50,
 }) {
   try {
@@ -25,8 +26,19 @@ async function scrapeHotelPrices({
       ? formatDate(checkout)
       : moment(checkin, "MMDDYYYY").add(1, "day").format("MMDDYYYY");
 
+    // Constructing the URL with star rating filter
+    let starFilter = starRating
+      ? `&filterData=STAR_RATING%7C${starRating}`
+      : "";
+
+    const url = `https://www.makemytrip.com/hotels/hotel-listing/?checkin=${checkin}&checkout=${checkout}&city=${cityCode}&country=IN&locusId=${cityCode}&locusType=city&regionNearByExp=3&roomStayQualifier=2e0e&rsc=1e2e0e&searchText=${encodeURIComponent(
+      cityName
+    )}${starFilter}&sort=reviewRating-desc`;
+
     console.log(
-      `🚀 Launching browser for ${cityName} from ${checkin} to ${checkout}...`
+      `🚀 Launching browser for ${cityName} (${
+        starRating || "All"
+      }-star hotels)...`
     );
     const browser = await puppeteer.launch({
       headless: false,
@@ -47,10 +59,6 @@ async function scrapeHotelPrices({
     console.log("🧹 Closing login popup...");
     await page.keyboard.press("Escape");
     await new Promise((res) => setTimeout(res, 3000));
-
-    const url = `https://www.makemytrip.com/hotels/hotel-listing/?checkin=${checkin}&city=${cityCode}&checkout=${checkout}&roomStayQualifier=2e0e&locusId=${cityCode}&country=IN&locusType=city&searchText=${encodeURIComponent(
-      cityName
-    )}&regionNearByExp=3&rsc=1e2e0e`;
 
     console.log("🏨 Navigating to hotel listings page...");
     await page.goto(url, { waitUntil: "networkidle2", timeout: 0 });
@@ -100,9 +108,9 @@ async function scrapeHotelPrices({
 
     console.log(`✅ Fetched ${prices.length} prices`);
     console.log(
-      `📊 Average price of 3-star hotels in ${cityName}: ₹${Math.round(
-        average
-      )}`
+      `📊 Average price of ${
+        starRating || "all"
+      }-star hotels in ${cityName}: ₹${Math.round(average)}`
     );
 
     console.log("🛑 Closing browser...");
@@ -112,34 +120,12 @@ async function scrapeHotelPrices({
   }
 }
 
-// Example usage with various date formats
+// Example usage with different star ratings
 scrapeHotelPrices({
   cityName: "Pune",
   cityCode: "CTPUN",
-  //   checkin: "March 24, 2025", // Human-readable date
-  //   checkout: "March 25, 2025",
+  checkin: "March 27, 2025",
+  checkout: "March 28, 2025",
+  starRating: 3, // Fetch only 3-star hotels
   targetHotelCount: 50,
 });
-
-// scrapeHotelPrices({
-//   cityName: "Mumbai",
-//   cityCode: "CTBOM",
-//   checkin: "24-03-2025", // DD-MM-YYYY format
-//   checkout: "25-03-2025",
-//   targetHotelCount: 50,
-// });
-
-// scrapeHotelPrices({
-//   cityName: "Delhi",
-//   cityCode: "CTDEL",
-//   checkin: "2025/03/24", // YYYY/MM/DD format
-//   checkout: "2025/03/25",
-//   targetHotelCount: 50,
-// });
-
-// // Example with default dates (today and tomorrow)
-// scrapeHotelPrices({
-//   cityName: "Bangalore",
-//   cityCode: "CTBLR",
-//   targetHotelCount: 50,
-// });
